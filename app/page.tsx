@@ -4,8 +4,10 @@ import type React from "react"
 
 import { useState, useRef } from "react"
 import { z } from "zod"
+import { Volume2, VolumeX } from "lucide-react"
 import HanziWriterComponent from "../components/hanzi-writer-component"
 import CharacterComparison from "../components/character-comparison"
+import { useSpeech } from "../hooks/use-speech"
 
 // Define the schema for Chinese character data
 const ChineseCharacterSchema = z.object({
@@ -34,6 +36,9 @@ export default function ChineseCharacterLearning() {
   
   // Create ref for animation section
   const animationRef = useRef<HTMLDivElement>(null)
+
+  // Speech hook
+  const { speakChinese, stop, isSpeaking, isSupported } = useSpeech()
 
   // Function to scroll to animation section
   const scrollToAnimation = () => {
@@ -237,7 +242,11 @@ export default function ChineseCharacterLearning() {
               🎬 Animation chữ: {selectedCharacter} / Character Animation: {selectedCharacter}
             </h2>
             <div className="flex justify-center">
-              <HanziWriterComponent character={selectedCharacter} size={400} />
+              <HanziWriterComponent 
+                character={selectedCharacter} 
+                pinyin={results?.characters.find(char => char.character === selectedCharacter)?.pinyin}
+                size={400} 
+              />
             </div>
           </div>
         )}
@@ -252,9 +261,30 @@ export default function ChineseCharacterLearning() {
         {/* Results Section */}
         {results && results.characters && results.characters.length > 0 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800 text-center mb-8">
-              Kết quả cho "{inputWord}" / Results for "{inputWord}"
-            </h2>
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Kết quả cho "{inputWord}" / Results for "{inputWord}"
+              </h2>
+              
+              {/* Speak All Button */}
+              {isSupported && (
+                <button
+                  onClick={() => {
+                    if (isSpeaking) {
+                      stop()
+                    } else {
+                      const allCharacters = results.characters.map(char => char.character).join('')
+                      speakChinese(allCharacters)
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
+                  title="Đọc tất cả các ký tự / Speak all characters"
+                >
+                  {isSpeaking ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                  {isSpeaking ? "Đang đọc..." : "🔊 Đọc tất cả"}
+                </button>
+              )}
+            </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {results.characters.map((char, index) => {
@@ -282,7 +312,27 @@ export default function ChineseCharacterLearning() {
                     
                     {/* Chinese Character Display */}
                     <div className="text-center mb-6">
-                      <div className="text-6xl font-bold text-gray-800 mb-2 font-serif">{char.character}</div>
+                      <div className="flex items-center justify-center gap-3 mb-2">
+                        <div className="text-6xl font-bold font-serif text-gray-800">
+                          {char.character}
+                        </div>
+                        {isSupported && isValidChinese && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (isSpeaking) {
+                                stop()
+                              } else {
+                                speakChinese(char.character)
+                              }
+                            }}
+                            className="p-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+                            title="Đọc ký tự / Speak character"
+                          >
+                            {isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                          </button>
+                        )}
+                      </div>
                       <div className="text-xl text-indigo-600 font-medium">{char.pinyin}</div>
                       {selectedCharacter === char.character && isValidChinese && (
                         <div className="mt-2 text-sm text-indigo-600 font-medium">
@@ -365,6 +415,12 @@ export default function ChineseCharacterLearning() {
                   <li className="flex items-start gap-2">
                     <span className="text-indigo-600 mt-1">🎬</span>
                     <span>Xem animation hoàn chỉnh trước khi luyện tập / Watch full animation before practicing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-indigo-600 mt-1">🔊</span>
+                    <span>
+                      Sử dụng tính năng đọc để học phát âm / Use speech feature to learn pronunciation
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-indigo-600 mt-1">✍️</span>

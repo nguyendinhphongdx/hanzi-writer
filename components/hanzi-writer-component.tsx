@@ -1,11 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Play, Pause, RotateCcw, SkipBack, SkipForward } from "lucide-react"
+import { Play, Pause, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
+import { useSpeech } from "@/hooks/use-speech"
 
 interface HanziWriterComponentProps {
   character: string
+  pinyin?: string
   size?: number
+  autoSpeakOnAnimation?: boolean
 }
 
 // Declare HanziWriter type for TypeScript
@@ -15,7 +18,7 @@ declare global {
   }
 }
 
-export default function HanziWriterComponent({ character, size = 300 }: HanziWriterComponentProps) {
+export default function HanziWriterComponent({ character, pinyin, size = 300, autoSpeakOnAnimation = true }: HanziWriterComponentProps) {
   const targetRef = useRef<HTMLDivElement>(null)
   const writerRef = useRef<any>(null)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -24,6 +27,8 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
   const [currentStroke, setCurrentStroke] = useState(0)
   const [totalStrokes, setTotalStrokes] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  
+  const { speakChinese, speakPinyin, stop, isSpeaking, isSupported } = useSpeech()
 
   // Load HanziWriter library
   useEffect(() => {
@@ -118,6 +123,12 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
     if (!writerRef.current || typeof writerRef.current.animateCharacter !== 'function') return
 
     setIsAnimating(true)
+    
+    // Auto-speak character when animation starts
+    if (autoSpeakOnAnimation && isSupported) {
+      speakChinese(character)
+    }
+    
     writerRef.current
       .animateCharacter({
         onComplete: () => {
@@ -250,7 +261,32 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
     <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
       {/* Character Info */}
       <div className="text-center mb-4">
-        <h3 className="text-2xl font-bold text-gray-800 mb-2">{character}</h3>
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <h3 className="text-2xl font-bold text-gray-800">{character}</h3>
+          {isSupported && (
+            <button
+              onClick={() => isSpeaking ? stop() : speakChinese(character)}
+              className="p-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+              title="Đọc ký tự / Speak character"
+            >
+              {isSpeaking ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+          )}
+        </div>
+        {pinyin && (
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-lg text-blue-600 font-medium">{pinyin}</span>
+            {isSupported && (
+              <button
+                onClick={() => isSpeaking ? stop() : speakPinyin(pinyin)}
+                className="p-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-600 transition-colors"
+                title="Đọc pinyin / Speak pinyin"
+              >
+                <Volume2 size={16} />
+              </button>
+            )}
+          </div>
+        )}
         <div className="text-sm text-gray-600">
           Nét {currentStroke} / {totalStrokes} • Stroke {currentStroke} / {totalStrokes}
         </div>
@@ -345,6 +381,12 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
           💡 <strong>Instructions:</strong> Click "Play" for full animation, or use "Next stroke" for step-by-step.
           "Practice Writing" mode lets you draw directly on screen.
         </p>
+        {isSupported && (
+          <p className="text-sm text-green-700 mt-1">
+            🔊 <strong>Âm thanh:</strong> Nhấn nút loa để nghe phát âm ký tự và pinyin / 
+            <strong>Audio:</strong> Click speaker buttons to hear character and pinyin pronunciation
+          </p>
+        )}
       </div>
     </div>
   )
