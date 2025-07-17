@@ -10,6 +10,39 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Touch target improvements for mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Prevent text selection on buttons */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Smooth scrolling */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+  
+  /* Mobile-specific utilities */
+  @media (max-width: 640px) {
+    .mobile-p-2 {
+      padding: 0.5rem;
+    }
+    
+    .mobile-text-sm {
+      font-size: 0.875rem;
+    }
+    
+    .mobile-gap-2 {
+      gap: 0.5rem;
+    }
+  }
 }
 
 @layer base {

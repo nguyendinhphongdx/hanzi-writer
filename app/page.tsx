@@ -135,7 +135,7 @@ export default function ChineseCharacterLearning() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8 max-w-7xl">
         {/* Header Section */}
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-4 px-4">
@@ -253,7 +253,6 @@ export default function ChineseCharacterLearning() {
               <HanziWriterComponent 
                 character={selectedCharacter} 
                 pinyin={results?.characters.find(char => char.character === selectedCharacter)?.pinyin}
-                size={300} 
               />
             </div>
           </div>
@@ -493,9 +492,10 @@ export default function ChineseCharacterLearning() {
         )}
 
         {/* Footer */}
-        <div className="text-center mt-12 pt-8 border-t border-gray-200">
-          <p className="text-gray-500 text-sm">
-            Được tạo bởi AI với thư viện HanziWriter chuyên nghiệp / Created by AI with professional HanziWriter library
+        <div className="text-center mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-200 px-4">
+          <p className="text-gray-500 text-xs sm:text-sm">
+            <span className="hidden sm:inline">Được tạo bởi AI với thư viện HanziWriter chuyên nghiệp / Created by AI with professional HanziWriter library</span>
+            <span className="sm:hidden">Được tạo bởi AI với HanziWriter</span>
           </p>
           <p className="text-gray-400 text-xs mt-1">
             HanziWriter by{" "}

@@ -10,7 +10,19 @@ export const metadata: Metadata = {
   description:
     "Interactive web application to learn Chinese characters from Vietnamese and English words with pinyin, meanings, and stroke order guidance.",
   keywords: "Chinese characters, learn Chinese, pinyin, stroke order, Vietnamese to Chinese, English to Chinese",
-    generator: 'v0.dev'
+  generator: 'v0.dev',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  themeColor: '#3B82F6',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'HanziWriter'
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false
+  }
 }
 
 export default function RootLayout({
@@ -19,8 +31,16 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className="smooth-scroll">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="theme-color" content="#3B82F6" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="HanziWriter" />
+        <meta name="format-detection" content="telephone=no, email=no, address=no" />
+      </head>
+      <body className={`${inter.className} touch-manipulation`}>{children}</body>
     </html>
   )
 }
