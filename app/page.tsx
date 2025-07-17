@@ -2,9 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { generateObject } from "ai"
-import { google } from "@ai-sdk/google"
+import { useState, useRef } from "react"
 import { z } from "zod"
 import HanziWriterComponent from "../components/hanzi-writer-component"
 import CharacterComparison from "../components/character-comparison"
@@ -33,6 +31,30 @@ export default function ChineseCharacterLearning() {
   const [error, setError] = useState<string | null>(null)
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"individual" | "comparison">("individual")
+  
+  // Create ref for animation section
+  const animationRef = useRef<HTMLDivElement>(null)
+
+  // Function to scroll to animation section
+  const scrollToAnimation = () => {
+    if (animationRef.current) {
+      animationRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      })
+    }
+  }
+
+  // Function to handle character selection and scroll
+  const handleCharacterSelect = (character: string) => {
+    setSelectedCharacter(character)
+    setViewMode("individual")
+    setError(null) // Clear any previous errors
+    // Scroll to animation after state update
+    setTimeout(() => {
+      scrollToAnimation()
+    }, 100)
+  }
 
   // Function to generate Chinese characters using AI
   const generateChineseCharacters = async () => {
@@ -47,26 +69,27 @@ export default function ChineseCharacterLearning() {
     setSelectedCharacter(null)
 
     try {
-      const result = await generateObject({
-        model: google("gemini-2.0-flash-exp"),
-        schema: ChineseCharacterSchema,
-        prompt: `Convert the word "${inputWord}" to Chinese characters. For each character, provide:
-        1. The Chinese character itself
-        2. Pinyin pronunciation with tone marks
-        3. Meaning in both Vietnamese and English (format: "Vietnamese / English")
-        4. Number of strokes
-        5. Tips for stroke order and writing technique
-        6. Character radicals and components
-        7. Difficulty level (beginner/intermediate/advanced)
-        
-        If the input is already in Chinese, break it down character by character.
-        If it's Vietnamese or English, find the most appropriate Chinese translation.
-        Provide accurate stroke counts and detailed radical information.`,
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ word: inputWord }),
       })
 
-      setResults(result.object)
-      if (result.object.characters.length > 0) {
-        setSelectedCharacter(result.object.characters[0].character)
+      if (!response.ok) {
+        throw new Error('Failed to generate characters')
+      }
+
+      const result = await response.json()
+      
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      setResults(result)
+      if (result.characters.length > 0) {
+        setSelectedCharacter(result.characters[0].character)
       }
     } catch (err) {
       console.error("Error generating Chinese characters:", err)
@@ -209,7 +232,7 @@ export default function ChineseCharacterLearning() {
 
         {/* HanziWriter Animation Section */}
         {selectedCharacter && viewMode === "individual" && (
-          <div className="mb-8">
+          <div ref={animationRef} className="mb-8">
             <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
               🎬 Animation chữ: {selectedCharacter} / Character Animation: {selectedCharacter}
             </h2>
@@ -234,29 +257,39 @@ export default function ChineseCharacterLearning() {
             </h2>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {results.characters.map((char, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
-                    selectedCharacter === char.character
-                      ? "border-indigo-500 ring-2 ring-indigo-200"
-                      : "border-gray-100 hover:border-indigo-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedCharacter(char.character)
-                    setViewMode("individual")
-                  }}
-                >
-                  {/* Chinese Character Display */}
-                  <div className="text-center mb-6">
-                    <div className="text-6xl font-bold text-gray-800 mb-2 font-serif">{char.character}</div>
-                    <div className="text-xl text-indigo-600 font-medium">{char.pinyin}</div>
-                    {selectedCharacter === char.character && (
-                      <div className="mt-2 text-sm text-indigo-600 font-medium">
-                        🎬 Đã chọn để xem animation / Selected for animation
+              {results.characters.map((char, index) => {
+                const isValidChinese = /[\u4e00-\u9fff]/.test(char.character) && char.character.length === 1
+                
+                return (
+                  <div
+                    key={index}
+                    className={`bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
+                      !isValidChinese 
+                        ? "border-red-300 bg-red-50" 
+                        : selectedCharacter === char.character
+                        ? "border-indigo-500 ring-2 ring-indigo-200"
+                        : "border-gray-100 hover:border-indigo-300"
+                    }`}
+                    onClick={() => handleCharacterSelect(char.character)}
+                  >
+                    {!isValidChinese && (
+                      <div className="text-center mb-4">
+                        <span className="text-red-600 text-sm font-medium">
+                          ⚠️ Không phải chữ Hán / Not a Chinese character
+                        </span>
                       </div>
                     )}
-                  </div>
+                    
+                    {/* Chinese Character Display */}
+                    <div className="text-center mb-6">
+                      <div className="text-6xl font-bold text-gray-800 mb-2 font-serif">{char.character}</div>
+                      <div className="text-xl text-indigo-600 font-medium">{char.pinyin}</div>
+                      {selectedCharacter === char.character && isValidChinese && (
+                        <div className="mt-2 text-sm text-indigo-600 font-medium">
+                          🎬 Đã chọn để xem animation / Selected for animation
+                        </div>
+                      )}
+                    </div>
 
                   {/* Character Information */}
                   <div className="space-y-4">
@@ -272,16 +305,16 @@ export default function ChineseCharacterLearning() {
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
                           Số nét / Strokes
                         </h3>
-                        <p className="text-gray-800 font-medium">{char.strokeCount}</p>
+                        <p className="text-gray-800 font-medium">{char.strokeCount || 'N/A'}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
                           Độ khó / Difficulty
                         </h3>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(char.difficulty)}`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(char.difficulty || 'beginner')}`}
                         >
-                          {char.difficulty}
+                          {char.difficulty || 'beginner'}
                         </span>
                       </div>
                     </div>
@@ -290,14 +323,14 @@ export default function ChineseCharacterLearning() {
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
                         Bộ thủ / Radicals
                       </h3>
-                      <p className="text-gray-700 text-sm">{char.radicals}</p>
+                      <p className="text-gray-700 text-sm">{char.radicals || 'Đang cập nhật / Updating...'}</p>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
                         Mẹo viết / Writing Tips
                       </h3>
-                      <p className="text-gray-700 text-sm leading-relaxed">{char.strokeOrderTips}</p>
+                      <p className="text-gray-700 text-sm leading-relaxed">{char.strokeOrderTips || 'Đang cập nhật / Updating...'}</p>
                     </div>
                   </div>
 
@@ -306,16 +339,20 @@ export default function ChineseCharacterLearning() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setSelectedCharacter(char.character)
-                        setViewMode("individual")
+                        handleCharacterSelect(char.character)
                       }}
-                      className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
+                      className={`w-full py-2 px-4 font-medium rounded-lg transition-colors ${
+                        isValidChinese 
+                          ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
+                          : "bg-orange-500 hover:bg-orange-600 text-white"
+                      }`}
                     >
-                      🎬 Xem Animation HanziWriter
+                      {isValidChinese ? "🎬 Xem Animation HanziWriter" : "⚠️ Xem (có thể lỗi)"}
                     </button>
                   </div>
                 </div>
-              ))}
+              )
+              })}
             </div>
 
             {/* Enhanced Learning Tips */}

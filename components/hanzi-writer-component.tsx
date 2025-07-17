@@ -20,6 +20,7 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
   const writerRef = useRef<any>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [isStrokeAnimating, setIsStrokeAnimating] = useState(false)
   const [currentStroke, setCurrentStroke] = useState(0)
   const [totalStrokes, setTotalStrokes] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
   // Initialize HanziWriter when loaded
   useEffect(() => {
     if (isLoaded && targetRef.current && character) {
+      setError(null) // Clear previous errors when character changes
       initializeWriter()
     }
 
@@ -70,6 +72,18 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
       // Clear previous content
       targetRef.current.innerHTML = ""
 
+      // Check if character data is available first
+      try {
+        const charData = await window.HanziWriter.loadCharacterData(character)
+        if (!charData || !charData.strokes || charData.strokes.length === 0) {
+          throw new Error("Character data not available")
+        }
+      } catch (dataErr) {
+        console.warn(`Character data not available for: ${character}`)
+        setError(`Chữ "${character}" không có dữ liệu stroke / Character "${character}" has no stroke data`)
+        return
+      }
+
       // Create new HanziWriter instance
       writerRef.current = window.HanziWriter.create(targetRef.current, character, {
         width: size,
@@ -86,7 +100,7 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
         showHintAfterMisses: 3,
       })
 
-      // Get stroke count ─ use the static helper instead of an instance method
+      // Get stroke count
       const charData = await window.HanziWriter.loadCharacterData(character)
       const strokeCount = charData.strokes.length
 
@@ -95,13 +109,13 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
       setError(null)
     } catch (err) {
       console.error("Error initializing HanziWriter:", err)
-      setError("Không thể tải dữ liệu chữ Hán / Cannot load character data")
+      setError(`Không thể tải dữ liệu chữ "${character}" / Cannot load character data for "${character}"`)
     }
   }
 
   // Animation controls
   const startAnimation = () => {
-    if (!writerRef.current) return
+    if (!writerRef.current || typeof writerRef.current.animateCharacter !== 'function') return
 
     setIsAnimating(true)
     writerRef.current
@@ -118,26 +132,30 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
   }
 
   const pauseAnimation = () => {
-    if (!writerRef.current) return
-    // HanziWriter doesn't have built-in pause, so we'll reset
+    if (!writerRef.current || typeof writerRef.current.cancelCurrentAnimation !== 'function') return
+    // Cancel any ongoing animation
     writerRef.current.cancelCurrentAnimation()
     setIsAnimating(false)
+    setIsStrokeAnimating(false)
   }
 
   const resetAnimation = () => {
-    if (!writerRef.current) return
+    if (!writerRef.current || typeof writerRef.current.hideCharacter !== 'function') return
 
     writerRef.current.hideCharacter()
     setCurrentStroke(0)
     setIsAnimating(false)
+    setIsStrokeAnimating(false)
   }
 
   const animateStroke = (strokeNum: number) => {
-    if (!writerRef.current || strokeNum >= totalStrokes) return
+    if (!writerRef.current || typeof writerRef.current.animateStroke !== 'function' || strokeNum >= totalStrokes) return
 
+    setIsStrokeAnimating(true)
     writerRef.current.animateStroke(strokeNum, {
       onComplete: () => {
         setCurrentStroke(strokeNum + 1)
+        setIsStrokeAnimating(false)
       },
     })
   }
@@ -149,18 +167,38 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
   }
 
   const prevStroke = () => {
-    if (currentStroke > 0) {
+    if (currentStroke > 0 && writerRef.current && typeof writerRef.current.hideCharacter === 'function') {
+      setIsStrokeAnimating(true)
       writerRef.current.hideCharacter()
       // Animate up to previous stroke
-      for (let i = 0; i < currentStroke - 1; i++) {
-        writerRef.current.animateStroke(i, { duration: 100 })
+      let strokesCompleted = 0
+      const targetStrokes = currentStroke - 1
+      
+      if (targetStrokes === 0) {
+        setCurrentStroke(0)
+        setIsStrokeAnimating(false)
+        return
       }
-      setCurrentStroke(currentStroke - 1)
+      
+      for (let i = 0; i < targetStrokes; i++) {
+        if (typeof writerRef.current.animateStroke === 'function') {
+          writerRef.current.animateStroke(i, { 
+            duration: 100,
+            onComplete: () => {
+              strokesCompleted++
+              if (strokesCompleted === targetStrokes) {
+                setCurrentStroke(targetStrokes)
+                setIsStrokeAnimating(false)
+              }
+            }
+          })
+        }
+      }
     }
   }
 
   const startQuiz = () => {
-    if (!writerRef.current) return
+    if (!writerRef.current || typeof writerRef.current.quiz !== 'function') return
 
     writerRef.current.quiz({
       onMistake: (strokeData: any) => {
@@ -180,8 +218,14 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
       <div className="bg-white rounded-xl border-2 border-red-200 p-6">
         <div className="text-center text-red-600">
           <p className="font-medium">⚠️ {error}</p>
+          <p className="text-sm mt-2 text-gray-600">
+            Ký tự "{character}" không có dữ liệu animation. Bạn có thể thử chọn ký tự khác.
+          </p>
           <button
-            onClick={initializeWriter}
+            onClick={() => {
+              setError(null)
+              initializeWriter()
+            }}
             className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
           >
             Thử lại / Retry
@@ -225,7 +269,7 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
       <div className="flex justify-center gap-2 mb-4">
         <button
           onClick={prevStroke}
-          disabled={currentStroke === 0}
+          disabled={currentStroke === 0 || !writerRef.current || typeof writerRef.current.hideCharacter !== 'function' || isStrokeAnimating}
           className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Nét trước / Previous stroke"
         >
@@ -233,17 +277,17 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
         </button>
 
         <button
-          onClick={isAnimating ? pauseAnimation : startAnimation}
-          disabled={currentStroke === totalStrokes}
+          onClick={isAnimating || isStrokeAnimating ? pauseAnimation : startAnimation}
+          disabled={!writerRef.current || ((isAnimating || isStrokeAnimating) && typeof writerRef.current.cancelCurrentAnimation !== 'function') || (!(isAnimating || isStrokeAnimating) && (currentStroke === totalStrokes || typeof writerRef.current.animateCharacter !== 'function'))}
           className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 transition-colors"
-          title={isAnimating ? "Tạm dừng / Pause" : "Phát / Play"}
+          title={isAnimating || isStrokeAnimating ? "Tạm dừng / Pause" : "Phát / Play"}
         >
-          {isAnimating ? <Pause size={16} /> : <Play size={16} />}
+          {isAnimating || isStrokeAnimating ? <Pause size={16} /> : <Play size={16} />}
         </button>
 
         <button
           onClick={nextStroke}
-          disabled={currentStroke >= totalStrokes}
+          disabled={currentStroke >= totalStrokes || !writerRef.current || typeof writerRef.current.animateStroke !== 'function' || isStrokeAnimating}
           className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Nét tiếp theo / Next stroke"
         >
@@ -252,7 +296,8 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
 
         <button
           onClick={resetAnimation}
-          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+          disabled={!writerRef.current || typeof writerRef.current.hideCharacter !== 'function' || isStrokeAnimating}
+          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Đặt lại / Reset"
         >
           <RotateCcw size={16} />
@@ -275,13 +320,15 @@ export default function HanziWriterComponent({ character, size = 300 }: HanziWri
         <div className="flex gap-2">
           <button
             onClick={startQuiz}
-            className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+            disabled={!writerRef.current || typeof writerRef.current.quiz !== 'function'}
+            className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ✍️ Luyện viết / Practice Writing
           </button>
           <button
-            onClick={() => writerRef.current?.showCharacter()}
-            className="py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            onClick={() => writerRef.current?.showCharacter && typeof writerRef.current.showCharacter === 'function' && writerRef.current.showCharacter()}
+            disabled={!writerRef.current || typeof writerRef.current.showCharacter !== 'function'}
+            className="py-2 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             👁️ Hiện chữ / Show Character
           </button>
