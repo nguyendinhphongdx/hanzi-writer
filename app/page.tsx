@@ -499,10 +499,9 @@ export default function ChineseCharacterLearning() {
           </p>
           <p className="text-gray-400 text-xs mt-1">
             HanziWriter by{" "}
-            <a href="https://github.com/chanind/hanzi-writer" className="text-indigo-500 hover:underline">
-              @chanind
-            </a>{" "}
-            • Data from Makemeahanzi project
+            <a href="https://github.com/phongnd-base" className="text-indigo-500 hover:underline">
+              @phong.nguyen02@base.vn
+            </a>
           </p>
         </div>
       </div>
