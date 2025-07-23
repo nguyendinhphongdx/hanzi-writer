@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Play, Pause, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
+import { Play, Pause, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Repeat1 } from "lucide-react"
 import { useSpeech } from "@/hooks/use-speech"
 
 interface HanziWriterComponentProps {
@@ -21,12 +21,15 @@ declare global {
 export default function HanziWriterComponent({ character, pinyin, size, autoSpeakOnAnimation = true }: HanziWriterComponentProps) {
   const targetRef = useRef<HTMLDivElement>(null)
   const writerRef = useRef<any>(null)
+  const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isStrokeAnimating, setIsStrokeAnimating] = useState(false)
   const [currentStroke, setCurrentStroke] = useState(0)
   const [totalStrokes, setTotalStrokes] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [isLooping, setIsLooping] = useState(false)
+  const [loopDelay, setLoopDelay] = useState(2000) // 2 seconds delay between loops
   
   // Responsive size calculation
   const [screenSize, setScreenSize] = useState(size || 280)
@@ -133,6 +136,7 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
       })
 
       // Get stroke count
+
       const charData = await window.HanziWriter.loadCharacterData(character)
       const strokeCount = charData.strokes.length
 
@@ -161,6 +165,13 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
         onComplete: () => {
           setIsAnimating(false)
           setCurrentStroke(totalStrokes)
+          // Restart animation if looping
+          if (isLooping) {
+            loopTimeoutRef.current = setTimeout(() => {
+              resetAnimation()
+              startAnimation()
+            }, loopDelay)
+          }
         },
       })
       .catch(() => {
@@ -175,6 +186,12 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
     writerRef.current.cancelCurrentAnimation()
     setIsAnimating(false)
     setIsStrokeAnimating(false)
+
+    // Clear loop timeout if running
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current)
+      loopTimeoutRef.current = null
+    }
   }
 
   const resetAnimation = () => {
@@ -184,6 +201,12 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
     setCurrentStroke(0)
     setIsAnimating(false)
     setIsStrokeAnimating(false)
+
+    // Clear loop timeout if running
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current)
+      loopTimeoutRef.current = null
+    }
   }
 
   const animateStroke = (strokeNum: number) => {
@@ -250,6 +273,24 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
       },
     })
   }
+
+  // Cleanup function to clear timeouts when component unmounts or character changes
+  useEffect(() => {
+    return () => {
+      if (loopTimeoutRef.current) {
+        clearTimeout(loopTimeoutRef.current)
+        loopTimeoutRef.current = null
+      }
+    }
+  }, [character])
+
+  // Stop loop when isLooping is turned off
+  useEffect(() => {
+    if (!isLooping && loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current)
+      loopTimeoutRef.current = null
+    }
+  }, [isLooping])
 
   if (error) {
     return (
@@ -371,7 +412,49 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
         >
           <RotateCcw size={16} />
         </button>
+
+        {/* Loop Control */}
+        <button
+          onClick={() => setIsLooping(!isLooping)}
+          className={`p-2 rounded-lg transition-colors touch-manipulation ${isLooping ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+          title={isLooping ? "Tắt lặp lại / Disable loop" : "Bật lặp lại / Enable loop"}
+        >
+          {isLooping ? <Repeat1 size={16} /> : <Repeat size={16} />}
+        </button>
       </div>
+
+      {/* Loop Control Settings */}
+      {isLooping && (
+        <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-green-800">
+              🔄 <span className="hidden sm:inline">Chế độ lặp lại đang bật / Loop mode enabled</span>
+              <span className="sm:hidden">Đang lặp lại</span>
+            </span>
+            <span className="text-xs text-green-600">
+              {Math.round(loopDelay / 1000)}s delay
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-green-700 min-w-0 flex-shrink-0">
+              <span className="hidden sm:inline">Thời gian chờ:</span>
+              <span className="sm:hidden">Delay:</span>
+            </label>
+            <input
+              type="range"
+              min="500"
+              max="5000"
+              step="500"
+              value={loopDelay}
+              onChange={(e) => setLoopDelay(Number(e.target.value))}
+              className="flex-1 h-2 bg-green-200 rounded-lg appearance-none cursor-pointer"
+            />
+            <span className="text-xs text-green-600 min-w-0 flex-shrink-0">
+              {Math.round(loopDelay / 1000)}s
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
@@ -413,13 +496,20 @@ export default function HanziWriterComponent({ character, pinyin, size, autoSpea
       <div className="mt-4 p-3 bg-blue-50 rounded-lg">
         <p className="text-xs sm:text-sm text-blue-800">
           💡 <strong>Hướng dẫn:</strong> 
-          <span className="hidden sm:inline"> Nhấn "Phát" để xem animation hoàn chỉnh, hoặc dùng nút "Nét tiếp theo" để xem từng nét. Chế độ "Luyện viết" cho phép bạn vẽ trực tiếp lên màn hình.</span>
-          <span className="sm:hidden"> Nhấn "Phát" để xem animation hoàn chỉnh.</span>
+          <span className="hidden sm:inline"> Nhấn "Phát" để xem animation hoàn chỉnh, hoặc dùng nút "Nét tiếp theo" để xem từng nét. Nhấn nút 🔄 để bật chế độ lặp lại liên tục. Chế độ "Luyện viết" cho phép bạn vẽ trực tiếp lên màn hình.</span>
+          <span className="sm:hidden"> Nhấn "Phát" để xem animation. Nhấn 🔄 để lặp lại liên tục.</span>
         </p>
         <p className="text-xs sm:text-sm text-blue-700 mt-1 hidden sm:block">
-          💡 <strong>Instructions:</strong> Click "Play" for full animation, or use "Next stroke" for step-by-step.
+          💡 <strong>Instructions:</strong> Click "Play" for full animation, "🔄" for continuous loop, or use "Next stroke" for step-by-step.
           "Practice Writing" mode lets you draw directly on screen.
         </p>
+        {isLooping && (
+          <p className="text-xs sm:text-sm text-green-700 mt-1">
+            🔄 <strong>Chế độ lặp:</strong> 
+            <span className="hidden sm:inline"> Animation sẽ tự động lặp lại với thời gian nghỉ {Math.round(loopDelay / 1000)}s. Điều chỉnh thanh trượt để thay đổi tốc độ lặp / <strong>Loop mode:</strong> Animation repeats automatically with {Math.round(loopDelay / 1000)}s delay. Adjust slider to change loop speed</span>
+            <span className="sm:hidden"> Lặp lại mỗi {Math.round(loopDelay / 1000)}s</span>
+          </p>
+        )}
         {isSupported && (
           <p className="text-xs sm:text-sm text-green-700 mt-1">
             🔊 <strong>Âm thanh:</strong> 

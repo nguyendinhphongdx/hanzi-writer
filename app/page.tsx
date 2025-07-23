@@ -17,7 +17,7 @@ const ChineseCharacterSchema = z.object({
       pinyin: z.string().describe("The pinyin pronunciation"),
       meaning: z.string().describe("The Vietnamese and English meaning"),
       strokeCount: z.number().describe("Number of strokes in the character"),
-      strokeOrderTips: z.string().describe("Tips for writing stroke order"),
+      strokeOrderTips: z.string().describe("Tips for writing stroke order, max 50 characters"),
       radicals: z.string().describe("Character radicals and components"),
       difficulty: z.enum(["beginner", "intermediate", "advanced"]).describe("Learning difficulty level"),
     }),
@@ -249,12 +249,80 @@ export default function ChineseCharacterLearning() {
               <span className="hidden sm:inline">🎬 Animation chữ: {selectedCharacter} / Character Animation: {selectedCharacter}</span>
               <span className="sm:hidden">🎬 {selectedCharacter}</span>
             </h2>
-            <div className="flex justify-center">
-              <HanziWriterComponent 
-                character={selectedCharacter} 
-                pinyin={results?.characters.find(char => char.character === selectedCharacter)?.pinyin}
-              />
-            </div>
+            
+            {/* Check if selectedCharacter is a single character or multiple characters */}
+            {selectedCharacter.length === 1 ? (
+              // Single character - show normal HanziWriter
+              <div className="flex justify-center">
+                <HanziWriterComponent 
+                  character={selectedCharacter} 
+                  pinyin={results?.characters.find(char => char.character === selectedCharacter)?.pinyin}
+                />
+              </div>
+            ) : (
+              // Multiple characters - show each character separately
+              <div className="space-y-6">
+                <div className="text-center mb-4">
+                  <p className="text-sm sm:text-base text-gray-600">
+                    <span className="hidden sm:inline">Từ "{selectedCharacter}" có {selectedCharacter.length} ký tự. Mỗi ký tự sẽ được hiển thị riêng biệt:</span>
+                    <span className="sm:hidden">Từ có {selectedCharacter.length} ký tự:</span>
+                  </p>
+                </div>
+                
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {selectedCharacter.split('').map((char, index) => {
+                    // Check if this character is valid Chinese character
+                    const isValidChinese = /[\u4e00-\u9fff]/.test(char)
+                    
+                    if (!isValidChinese) {
+                      return (
+                        <div key={index} className="flex justify-center">
+                          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 text-center">
+                            <div className="text-4xl mb-2">{char}</div>
+                            <p className="text-sm text-yellow-700">
+                              <span className="hidden sm:inline">Không phải chữ Hán / Not Chinese character</span>
+                              <span className="sm:hidden">Không phải chữ Hán</span>
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+                    
+                    return (
+                      <div key={index} className="flex justify-center">
+                        <div className="w-full max-w-sm">
+                          <div className="text-center mb-2">
+                            <span className="text-sm font-medium text-gray-600">
+                              <span className="hidden sm:inline">Ký tự {index + 1} / Character {index + 1}</span>
+                              <span className="sm:hidden">Ký tự {index + 1}</span>
+                            </span>
+                          </div>
+                          <HanziWriterComponent 
+                            character={char} 
+                            pinyin={results?.characters.find(charData => charData.character === selectedCharacter)?.pinyin}
+                            size={250}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                
+                {/* Overall word information */}
+                <div className="bg-blue-50 rounded-xl p-4 mt-6">
+                  <h3 className="font-semibold text-blue-800 mb-2">
+                    <span className="hidden sm:inline">Thông tin về từ "{selectedCharacter}" / Information about word "{selectedCharacter}"</span>
+                    <span className="sm:hidden">Thông tin về từ "{selectedCharacter}"</span>
+                  </h3>
+                  {results?.characters.find(char => char.character === selectedCharacter) && (
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p><strong>Pinyin:</strong> {results.characters.find(char => char.character === selectedCharacter)?.pinyin}</p>
+                      <p><strong>Nghĩa:</strong> {results.characters.find(char => char.character === selectedCharacter)?.meaning}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

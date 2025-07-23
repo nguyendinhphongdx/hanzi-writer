@@ -9,7 +9,7 @@ const ChineseCharacterSchema = z.object({
       pinyin: z.string().describe("The pinyin pronunciation or description"),
       meaning: z.string().describe("The Vietnamese and English meaning"),
       strokeCount: z.number().describe("Number of strokes (0 for punctuation)"),
-      strokeOrderTips: z.string().describe("Tips for writing stroke order"),
+      strokeOrderTips: z.string().describe("Tips for writing stroke order, max 50 characters"),
       radicals: z.string().describe("Character radicals and components"),
       difficulty: z.enum(["beginner", "intermediate", "advanced"]).describe("Learning difficulty level"),
     }),
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       2. Pinyin pronunciation (for Chinese characters) or description (for punctuation)
       3. Meaning in both Vietnamese and English (format: "Vietnamese / English")
       4. Number of strokes (for Chinese characters, 0 for punctuation)
-      5. Tips for stroke order and writing technique (for Chinese characters)
+      5. Tips for stroke order and writing technique (for Chinese characters, by "Vietnamese" and stroke)
       6. Character radicals and components (for Chinese characters)
       7. Difficulty level: choose exactly one of "beginner", "intermediate", or "advanced"
       
