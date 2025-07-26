@@ -41,22 +41,24 @@ export async function POST(req: Request) {
       2. Pinyin pronunciation (for Chinese characters) or description (for punctuation)
       3. Meaning in both Vietnamese and English (format: "Vietnamese / English")
       4. Number of strokes (for Chinese characters, 0 for punctuation)
-      5. Tips for stroke order and writing technique (for Chinese characters, by "Vietnamese" and stroke)
+      5. Tips for stroke order and writing technique (for Chinese characters, MAXIMUM 40 characters, be concise)
       6. Character radicals and components (for Chinese characters)
       7. Difficulty level: choose exactly one of "beginner", "intermediate", or "advanced"
+      
+      IMPORTANT: Keep strokeOrderTips very short and concise (max 40 characters). Use brief phrases like:
+      - "Top to bottom, left to right"
+      - "Horizontal first, then vertical"
+      - "Start with radical, add components"
+      - "Write box first, then inside"
       
       Include ALL characters and punctuation from the input phrase exactly as they appear.
       
       If the input is already in Chinese, break it down character by character including punctuation.
       If it's Vietnamese or English, translate to Chinese and include punctuation.
       
-      Example for "你好, 世界!":
-      - character: "你", pinyin: "nǐ", meaning: "bạn / you", strokeCount: 7, difficulty: "beginner"
-      - character: "好", pinyin: "hǎo", meaning: "tốt / good", strokeCount: 6, difficulty: "beginner"  
-      - character: ",", pinyin: "comma", meaning: "dấu phẩy / comma", strokeCount: 0, difficulty: "beginner"
-      - character: "世", pinyin: "shì", meaning: "thế giới / world", strokeCount: 5, difficulty: "intermediate"
-      - character: "界", pinyin: "jiè", meaning: "giới / boundary", strokeCount: 9, difficulty: "intermediate"
-      - character: "!", pinyin: "exclamation", meaning: "dấu chấm than / exclamation", strokeCount: 0, difficulty: "beginner"`,
+      Example for "你好":
+      - character: "你", pinyin: "nǐ", meaning: "bạn / you", strokeCount: 7, strokeOrderTips: "Left radical first, then right", difficulty: "beginner"
+      - character: "好", pinyin: "hǎo", meaning: "tốt / good", strokeCount: 6, strokeOrderTips: "Left then right components", difficulty: "beginner"`,
     })
 
     return Response.json(result.object)
