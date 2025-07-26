@@ -36,29 +36,49 @@ export async function POST(req: Request) {
     const result = await generateObject({
       model: google("gemini-2.0-flash-exp"),
       schema: ChineseCharacterSchema,
-      prompt: `Convert the word "${word}" to Chinese characters and any punctuation. For each character/symbol, provide:
-      1. The character itself (Chinese characters, punctuation marks, spaces, etc.)
-      2. Pinyin pronunciation (for Chinese characters) or description (for punctuation)
-      3. Meaning in both Vietnamese and English (format: "Vietnamese / English")
-      4. Number of strokes (for Chinese characters, 0 for punctuation)
-      5. Tips for stroke order and writing technique (for Chinese characters, MAXIMUM 40 characters, be concise)
-      6. Character radicals and components (for Chinese characters)
-      7. Difficulty level: choose exactly one of "beginner", "intermediate", or "advanced"
+      prompt: `TASK: Convert "${word}" to Chinese and analyze EVERY SINGLE CHARACTER separately.
+
+      STEP 1: Translate the input to Chinese characters
+      STEP 2: Split the Chinese result into individual characters (ONE character per entry)
       
-      IMPORTANT: Keep strokeOrderTips very short and concise (max 40 characters). Use brief phrases like:
-      - "Top to bottom, left to right"
-      - "Horizontal first, then vertical"
-      - "Start with radical, add components"
-      - "Write box first, then inside"
+      ABSOLUTE REQUIREMENTS:
+      ❌ NEVER group multiple characters together (like "今天", "星期", "上午")
+      ✅ ALWAYS create separate entries for each character (like "今", "天", "星", "期")
+      ❌ Do NOT create compound words or phrases
+      ✅ Each "character" field must contain exactly ONE Chinese character
       
-      Include ALL characters and punctuation from the input phrase exactly as they appear.
+      For EACH INDIVIDUAL CHARACTER, provide:
+      1. character: Single Chinese character (ONE character only)
+      2. pinyin: Pronunciation for that specific character 
+      3. meaning: Individual character meaning in "Vietnamese / English" format
+      4. strokeCount: Number of strokes for that character
+      5. strokeOrderTips: Brief writing tips (max 40 chars)
+      6. radicals: Character components and radicals
+      7. difficulty: "beginner", "intermediate", or "advanced"
       
-      If the input is already in Chinese, break it down character by character including punctuation.
-      If it's Vietnamese or English, translate to Chinese and include punctuation.
+      EXAMPLES:
       
-      Example for "你好":
-      - character: "你", pinyin: "nǐ", meaning: "bạn / you", strokeCount: 7, strokeOrderTips: "Left radical first, then right", difficulty: "beginner"
-      - character: "好", pinyin: "hǎo", meaning: "tốt / good", strokeCount: 6, strokeOrderTips: "Left then right components", difficulty: "beginner"`,
+      Input: "hello" → "你好"
+      ✅ CORRECT OUTPUT:
+      - character: "你", pinyin: "nǐ", meaning: "bạn / you"
+      - character: "好", pinyin: "hǎo", meaning: "tốt / good"
+      
+      Input: "hôm nay" → "今天" 
+      ✅ CORRECT OUTPUT:
+      - character: "今", pinyin: "jīn", meaning: "hiện tại / now"
+      - character: "天", pinyin: "tiān", meaning: "ngày / day"
+      
+      Input: "thứ hai" → "星期一"
+      ✅ CORRECT OUTPUT:
+      - character: "星", pinyin: "xīng", meaning: "ngôi sao / star"
+      - character: "期", pinyin: "qī", meaning: "thời kỳ / period"  
+      - character: "一", pinyin: "yī", meaning: "một / one"
+      
+      ❌ WRONG (DO NOT DO THIS):
+      - character: "今天", pinyin: "jīntiān", meaning: "hôm nay / today"
+      - character: "星期", pinyin: "xīngqī", meaning: "tuần / week"
+      
+      Remember: ONE CHARACTER = ONE ENTRY. No exceptions.`,
     })
 
     return Response.json(result.object)
