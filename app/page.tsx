@@ -17,7 +17,6 @@ const ChineseCharacterSchema = z.object({
       pinyin: z.string().describe("The pinyin pronunciation"),
       meaning: z.string().describe("The Vietnamese and English meaning"),
       strokeCount: z.number().describe("Number of strokes in the character"),
-      strokeOrderTips: z.string().describe("Tips for writing stroke order, max 50 characters"),
       radicals: z.string().describe("Character radicals and components"),
       difficulty: z.enum(["beginner", "intermediate", "advanced"]).describe("Learning difficulty level"),
     }),
@@ -453,13 +452,6 @@ export default function ChineseCharacterLearning() {
                         Bộ thủ / Radicals
                       </h3>
                       <p className="text-gray-700 text-xs sm:text-sm">{char.radicals || 'Đang cập nhật / Updating...'}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Mẹo viết / Writing Tips
-                      </h3>
-                      <p className="text-gray-700 text-xs sm:text-sm leading-relaxed">{char.strokeOrderTips || 'Đang cập nhật / Updating...'}</p>
                     </div>
                   </div>
 
