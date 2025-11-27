@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateObject({
-      model: google("gemini-2.0-flash-exp"),
+      model: google("gemini-2.0-flash"),
       schema: ChineseCharacterSchema,
       prompt: `TASK: Convert "${word}" to Chinese and analyze EVERY SINGLE CHARACTER separately.
 
